@@ -12,17 +12,18 @@ authors = [
 ]
 
 dependencies = [
-    "numpy>=1.17.4",
-    "spatialmath-python>=1.1.5",
+    "numpy==1.26.4",
+    "spatialmath-python==1.1.14",
     "spatialgeometry>=1.0.0",
     "pgraph-python",
     "scipy",
     "matplotlib",
     "ansitable",
-    "swift-sim>=1.0.0",
+    "swift-sim @ git+https://github.com/menabou2/SMART-ART-swift.git@master",
     "rtb-data",
     "progress",
     "typing_extensions",
+    "websockets==10.4",
 ]
 
 license = { file = "LICENSE" }
