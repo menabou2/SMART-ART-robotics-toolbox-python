@@ -20,7 +20,7 @@ dependencies = [
     "matplotlib",
     "ansitable",
     "swift-sim @ git+https://github.com/menabou2/SMART-ART-swift.git@master",
-    "rtb-data",
+    "rtb-data @ git+https://github.com/menabou2/SMART-ART-rtb-data.git@master",
     "progress",
     "typing_extensions",
     "websockets==10.4",
