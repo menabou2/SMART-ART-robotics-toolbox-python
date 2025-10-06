@@ -1786,7 +1786,7 @@ class Robot(BaseRobot[Link], RobotKinematicsMixin):
                 # transform from parent(j) to j
                 Xup[j] = SE3(self.links[j].A(qk[j])).inv()
 
-                if self.links[j].parent is None:
+                if self.links[j].parent is None or self.links[j].parent.jindex is None:
                     v[j] = vJ
                     a[j] = Xup[j] * a_grav + SpatialAcceleration(s[j] * qddk[j])
                 else:
@@ -1803,7 +1803,7 @@ class Robot(BaseRobot[Link], RobotKinematicsMixin):
                 # next line could be dot(), but fails for symbolic arguments
                 Q[k, j] = sum(f[j].A * s[j])
 
-                if self.links[j].parent is not None:
+                if self.links[j].parent is not None and self.links[j].parent.jindex is not None:
                     jp = self.links[j].parent.jindex  # type: ignore
                     f[jp] = f[jp] + Xup[j] * f[j]
 
