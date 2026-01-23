@@ -423,6 +423,66 @@ class DynamicsMixin:
 
         return np.r_[qd, qdd]
 
+    def fdyn_firstorder(self: RobotProto, M, B, qd_prev, tau, tau_prev, dt):
+        r"""
+        Compute velocity due to applied torque using a simplified first order model
+        
+        ``qd = fdyn_firstorder(M, B, qd_prev, tau, tau_prev, dt)``
+
+        Parameters
+        ----------
+        M
+            Virtual mass matrix
+        B
+            Damping matrix
+        qd_prev
+            Joint velocity on the previous step(k-1)
+        tau
+            Applied torque step(k)
+        tau_prev
+            Applied torque on the previous step(k-1)
+        dt
+            Time step
+
+        Returns
+        -------
+        qd
+            Joint velocity step(k) ndarray(n)
+        """
+        M_tilde = (2 / dt) * M
+        qd = np.linalg.pinv(M_tilde + B) @ (tau + tau_prev + ((M_tilde - B) @ qd_prev))
+        return qd
+
+    def idyn_firstorder(self: RobotProto, M, B, qd_prev, qd, tau_prev, dt):
+        r"""
+        Compute torque due to joint velocity using a simplified first order model
+        
+        ``tau = idyn_firstorder(M, B, qd_prev, qd, tau_prev, dt)``
+
+        Parameters
+        ----------
+        M
+            Virtual mass matrix
+        B
+            Damping matrix
+        qd_prev
+            Joint velocity on the previous step(k-1)
+        qd
+            Joint velocity step(k)
+        tau_prev
+            Applied torque on the previous step(k-1)
+        dt
+            Time step
+
+        Returns
+        -------
+        tau
+            Applied torque step(k) ndarray(n)
+        """
+        M_tilde = (2 / dt) * M
+        tau = ((M_tilde + B) @ qd) - ((M_tilde - B) @ qd_prev) - tau_prev
+        return tau
+    
     def accel(self: RobotProto, q, qd, torque, gravity=None):
         r"""
         Compute acceleration due to applied torque
