@@ -31,28 +31,63 @@ class xArm7(Robot):
     """
 
     def __init__(self):
+        
+        gripper = False
 
-        links, name, urdf_string, urdf_filepath = self.URDF_read(
-            "xarm_description/urdf/xarm7_gripper.urdf"
-        )
-        links[9].name = "gripper_link"
+        urdf_file = "xarm_description/urdf/xarm7_gripper.urdf" if gripper else "xarm_description/urdf/xarm7_cam_1305.urdf"
+
+        links, name, urdf_string, urdf_filepath = self.URDF_read(urdf_file)
+
+        if gripper : links[9].name = "gripper_link"
 
         super().__init__(
             links,
             name=name,
             manufacturer="UFACTORY",
-            gripper_links=links[10],
+            gripper_links=links[10] if gripper else [],
             urdf_string=urdf_string,
             urdf_filepath=urdf_filepath,
         )
 
-        self.grippers[0].tool = SE3(0, 0, 0.172)
+        self._joint_offsets = [
+            None, None,   
+            SE3.Trans(0, 0, 0),                # index 2 → no offset
+            SE3.Trans(0, 0, -0.11665),         # index 3
+            SE3.Trans(0, 0,  0.059),           # index 4
+            SE3.Trans(0, 0, -0.11057),         # index 5
+            SE3.Trans(0, 0,  0.04605108),      # index 6
+            SE3.Trans(0, 0, -0.17982),         # index 7
+            SE3.Trans(0, 0,  0.01209767),      # index 8
+            SE3.Trans(0, 0, -0.03162),         # index 9
+        ]
 
-        self.qr = np.array([0, np.pi/6, 0, np.pi/3, 0, -np.pi/4, 0])
+        if gripper : self.grippers[0].tool = SE3(0, 0, 0.172)
+
+        self.qr = np.array([0, 0.0177, 0, 1.86751, 0, 0.72431, 0])
         self.qz = np.zeros(7)
+        self.qdlim = np.pi
+        self.damping_gain = np.array([10, 10, 5, 5, 5, 2, 2])
+        self.friction_gain = np.array([1, 1, 1, 1, 1, 1, 1])
 
         self.addconfiguration("qr", self.qr)
         self.addconfiguration("qz", self.qz)
+
+    def joints_T(self, q = None):
+        """
+        Returns transformed base to joints (joints_T)
+        """
+        if q is None:
+            q = self.q    # use current robot joint state
+
+        T_all = self.fkine_all(q)
+
+        # apply joint offsets
+        for i in range(2, 10):
+            T_all[i] = T_all[i] * self._joint_offsets[i]
+        
+        joints_T = T_all[2:10]
+        return joints_T
+
 
 
 if __name__ == "__main__":  # pragma nocover

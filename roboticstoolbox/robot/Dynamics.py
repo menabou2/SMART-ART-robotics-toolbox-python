@@ -482,7 +482,52 @@ class DynamicsMixin:
         M_tilde = (2 / dt) * M
         tau = ((M_tilde + B) @ qd) - ((M_tilde - B) @ qd_prev) - tau_prev
         return tau
+
+    def fdyn_cartesian_R(self : RobotProto, q, qd, wrench):
+        r"""
+        Compute acceleration due to an applied wrench for a redundant robot
+        
+        ``xdd = robot.fdyn_cartesian_R(q, qd, xd, W)``
+
+        Parameters
+        ----------
+        q
+            Joint coordinates
+        qd
+            Joint velocity
+        xd
+            Cartesian velocity twist
+        wrench
+            Applied wrench on manipulator
+
+        Returns
+        -------
+        xdd
+            Cartesian acceleration
+        """
     
+        xdd = np.zeros(6)
+    
+        J = self.jacob0(q)
+        M = self.inertia(q)
+        C = self.coriolis(q, qd)
+        b = C @ qd
+        G = self.gravload(q)
+
+        M_x = np.linalg.inv(J @ np.linalg.inv(M) @ J.T)
+
+        J_bar = np.linalg.inv(M) @ J.T @ M_x
+        J_dot = self.jacob0_dot(q, qd, J0=J, representation = None)
+        h = J_dot @ qd
+
+        C_x = J_bar.T @ b - M_x @ h
+        
+        G_x = J_bar.T @ G
+    
+        xdd = np.linalg.solve(M_x, wrench - C_x - G_x)
+        return xdd
+
+
     def accel(self: RobotProto, q, qd, torque, gravity=None):
         r"""
         Compute acceleration due to applied torque
@@ -985,7 +1030,7 @@ class DynamicsMixin:
             return taug
 
     def inertia_x(
-        self: RobotProto, q=None, pinv=False, representation="rpy/xyz", Ji=None
+        self: RobotProto, q=None, pinv=False, representation=None, Ji=None
     ):
         r"""
         Operational space inertia matrix
@@ -1059,7 +1104,7 @@ class DynamicsMixin:
         q = getmatrix(q, (None, self.n))
         if q.shape[1] != 6:
             pinv = True
-
+        
         if q.shape[0] == 1:
             # single q case
             if Ji is None:
@@ -1208,7 +1253,7 @@ class DynamicsMixin:
                 Mx = self.inertia_x(q[0, :], Ji=Ji)
             if Jd is None:
                 Jd = self.jacob0_dot(q[0, :], qd[0, :], J0=Ja)
-            return Ji.T @ (C - Mx @ Jd) @ Ji
+            return (Ji.T @ C - Mx @ Jd) @ Ji
         else:
             # trajectory case
             Ct = np.zeros((q.shape[0], 6, 6))
@@ -1373,7 +1418,7 @@ class DynamicsMixin:
 
         **Trajectory operation**
 
-        If `q`, `qd`, torque are matrices (m,n) then ``qdd`` is a matrix (m,n)
+        If `q`, `xd`, torque are matrices (m,n) then ``xdd`` is a matrix (m,n)
         where each row is the acceleration corresponding to the equivalent rows
         of q, qd, wrench.
 
@@ -1381,8 +1426,8 @@ class DynamicsMixin:
         ----------
         q
             Joint coordinates
-        qd
-            Joint velocity
+        xd
+            Cartesian velocity
         wrench
             Wrench applied to the end-effector
         gravity
@@ -1431,7 +1476,7 @@ class DynamicsMixin:
         if q.shape[1] != 6:
             pinv = True
 
-        xdd = np.zeros((q.shape[0], self.n))
+        xdd = np.zeros((q.shape[0], 6))
 
         for k, (qk, xdk, wk) in enumerate(zip(q, xd, w)):
 
@@ -1466,10 +1511,10 @@ class DynamicsMixin:
             # assume Td = 0, not sure how valid that is
 
             # need Jacobian dot
-            qdk = Ji @ xdk
-            Jd = self.jacob0_dot(qk, qdk, J0=Ja)
+            # qdk = Ji @ xdk
+            # Jd = self.jacob0_dot(qk, qdk, J0=Ja)
 
-            xdd[k, :] = T @ (Jd @ qdk + J @ qdd)
+            xdd[k, :] = Ja @ qdd
 
         if q.shape[0] == 1:
             return xdd[0, :]
